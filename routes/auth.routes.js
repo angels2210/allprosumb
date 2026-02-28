@@ -4,33 +4,52 @@ const jwt = require("jsonwebtoken");
 const { User } = require("../models");
 
 router.post("/register", async (req, res) => {
-  const { name, email, password } = req.body;
-  const hashed = await bcrypt.hash(password, 10);
-  const user = await User.create({ name, email, password: hashed });
-  res.json(user);
+  try {
+    const { name, email, password } = req.body;
+    const hashed = await bcrypt.hash(password, 10);
+    const user = await User.create({ name, email, password: hashed });
+    res.json(user);
+  } catch (err) {
+    console.error("Error en register:", err);
+    res.status(500).json({ msg: "Error al registrar usuario" });
+  }
 });
 
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ where: { email } });
-  if (!user) return res.status(400).json({ msg: "Usuario no existe" });
+  try {
+    // Acepta tanto "username" como "email"
+    const { username, email, password } = req.body;
+    const loginField = email || username;
 
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) return res.status(400).json({ msg: "Contraseña incorrecta" });
+    const user = await User.findOne({ where: { email: loginField } });
+    if (!user) return res.status(400).json({ success: false, message: "Usuario no existe" });
 
-  const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
-  res.json({ token, user });
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(400).json({ success: false, message: "Contraseña incorrecta" });
+
+    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    res.json({ success: true, token, user });
+  } catch (err) {
+    console.error("Error en login:", err);
+    res.status(500).json({ success: false, message: "Error interno del servidor" });
+  }
 });
 
-// POST /api/clients/login - Login de clientes
 router.post("/clients/login", async (req, res) => {
-  // TODO: Implementar lógica de login de clientes
-  res.json({ token: "client-token", user: { role: "client" } });
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ where: { email, role: "client" } });
+    if (!user) return res.status(400).json({ success: false, message: "Usuario no existe" });
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(400).json({ success: false, message: "Contraseña incorrecta" });
+    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    res.json({ success: true, token, user });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error interno" });
+  }
 });
 
-// POST /api/sales/clients - Registro de nuevos clientes (público)
 router.post("/sales/clients", async (req, res) => {
-  // TODO: Implementar registro público
   res.json({ message: "Cliente registrado exitosamente" });
 });
 

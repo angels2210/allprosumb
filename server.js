@@ -22,8 +22,8 @@ app.use("/api", require("./routes/config.routes")); // Configuración y BCV
 sequelize.sync({ alter: true })
   .then(() => {
     console.log("Base de datos conectada");
-    app.listen(process.env.PORT, () => {
-      console.log("Servidor corriendo en puerto " + process.env.PORT);
+    app.listen(process.env.PORT || 5000, () => {
+      console.log("Servidor corriendo en puerto " + (process.env.PORT || 5000));
     });
   })
   .catch(err => console.log(err));
