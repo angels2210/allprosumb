@@ -18,7 +18,7 @@ router.post("/", auth, async (req, res) => {
       business_name, address, manager_name, seller_name_code,
       payment_method, payment_reference, credit_days, apply_discount,
       total: 0,
-      status: 'pendiente'
+      status: 'pending'
     });
 
     for (let item of (items || [])) {
@@ -101,7 +101,29 @@ router.get("/:id", auth, async (req, res) => {
       include: [{ model: OrderItem, include: [Product] }]
     });
     if (!order) return res.status(404).json({ message: "Orden no encontrada" });
-    res.json(order);
+
+    res.json({
+      id: order.id,
+      customer_name: order.customer_name,
+      customer_phone: order.customer_phone,
+      customer_id_number: order.customer_id_number,
+      business_name: order.business_name,
+      address: order.address,
+      manager_name: order.manager_name,
+      seller_name_code: order.seller_name_code,
+      total: order.total,
+      payment_method: order.payment_method,
+      payment_reference: order.payment_reference,
+      payment_receipt: order.payment_receipt,
+      status: order.status,
+      created_at: order.createdAt,
+      items: (order.OrderItems || []).map(item => ({
+        id: item.id,
+        product_name: item.product_name || (item.Product ? item.Product.name : ''),
+        quantity: item.quantity,
+        price: item.price
+      }))
+    });
   } catch (err) {
     res.status(500).json({ message: "Error al obtener orden" });
   }

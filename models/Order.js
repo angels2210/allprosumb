@@ -14,7 +14,7 @@ const Order = sequelize.define("Order", {
   payment_method: { type: DataTypes.STRING, defaultValue: 'contado' },
   payment_reference: { type: DataTypes.STRING, defaultValue: '' },
   payment_receipt: { type: DataTypes.STRING, defaultValue: '' },
-  status: { type: DataTypes.STRING, defaultValue: 'pendiente' },
+  status: { type: DataTypes.STRING, defaultValue: 'pending' },
   credit_days: { type: DataTypes.INTEGER, defaultValue: 0 },
   apply_discount: { type: DataTypes.BOOLEAN, defaultValue: false }
 });
