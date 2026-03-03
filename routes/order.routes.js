@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const { Order, OrderItem, Product } = require("../models");
+const { Order, OrderItem, Product, User } = require("../models");
 const auth = require("../middleware/auth.middleware");
 
 // Crear pedido
@@ -17,25 +17,18 @@ router.post("/", auth, async (req, res) => {
       customer_name, customer_phone, customer_id_number, customer_id_type,
       business_name, address, manager_name, seller_name_code,
       payment_method, payment_reference, credit_days, apply_discount,
-      total: 0,
-      status: 'pending'
+      total: 0, status: 'pending'
     });
 
     for (let item of (items || [])) {
       const product = await Product.findByPk(item.product_id);
       if (!product) continue;
-
       const subtotal = product.price * item.quantity;
       total += subtotal;
-
       await OrderItem.create({
-        OrderId: order.id,
-        ProductId: product.id,
-        product_name: product.name,
-        quantity: item.quantity,
-        price: product.price
+        OrderId: order.id, ProductId: product.id,
+        product_name: product.name, quantity: item.quantity, price: product.price
       });
-
       product.stock -= item.quantity;
       await product.save();
     }
@@ -43,7 +36,6 @@ router.post("/", auth, async (req, res) => {
     if (apply_discount) total = total * 0.95;
     order.total = total;
     await order.save();
-
     res.json({ success: true, message: "Orden creada", orderId: order.id });
   } catch (err) {
     console.error("Error creando orden:", err);
@@ -51,16 +43,16 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
-// Obtener todos los pedidos (admin ve todos, vendedor ve los suyos)
+// Obtener todos los pedidos
 router.get("/", auth, async (req, res) => {
   try {
     const where = req.user.role === 'vendedor' ? { UserId: req.user.id } : {};
     const orders = await Order.findAll({
       where,
-      include: [{
-        model: OrderItem,
-        include: [Product]
-      }],
+      include: [
+        { model: OrderItem, include: [Product] },
+        { model: User, attributes: ['id', 'username', 'first_name', 'last_name', 'seller_code'] }
+      ],
       order: [['createdAt', 'DESC']]
     });
 
@@ -73,6 +65,9 @@ router.get("/", auth, async (req, res) => {
       address: order.address,
       manager_name: order.manager_name,
       seller_name_code: order.seller_name_code,
+      seller_name: order.User ? `${order.User.first_name || ''} ${order.User.last_name || ''}`.trim() || order.User.username : 'N/A',
+      seller_code: order.User?.seller_code || 'N/A',
+      seller_username: order.User?.username || 'N/A',
       total: order.total,
       payment_method: order.payment_method,
       payment_reference: order.payment_reference,
@@ -98,7 +93,10 @@ router.get("/", auth, async (req, res) => {
 router.get("/:id", auth, async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id, {
-      include: [{ model: OrderItem, include: [Product] }]
+      include: [
+        { model: OrderItem, include: [Product] },
+        { model: User, attributes: ['id', 'username', 'first_name', 'last_name', 'seller_code'] }
+      ]
     });
     if (!order) return res.status(404).json({ message: "Orden no encontrada" });
 
@@ -111,6 +109,9 @@ router.get("/:id", auth, async (req, res) => {
       address: order.address,
       manager_name: order.manager_name,
       seller_name_code: order.seller_name_code,
+      seller_name: order.User ? `${order.User.first_name || ''} ${order.User.last_name || ''}`.trim() || order.User.username : 'N/A',
+      seller_code: order.User?.seller_code || 'N/A',
+      seller_username: order.User?.username || 'N/A',
       total: order.total,
       payment_method: order.payment_method,
       payment_reference: order.payment_reference,

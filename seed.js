@@ -4,31 +4,23 @@ const bcrypt = require("bcryptjs");
 const seedDatabase = async () => {
   try {
     console.log("🔄 Reiniciando base de datos...");
-    
-    // Eliminar ENUM viejo antes de sync
     await sequelize.query('DROP TYPE IF EXISTS "enum_Users_role" CASCADE');
     console.log("🗑️ ENUM eliminado");
 
-    // Importar modelos DESPUÉS de eliminar el ENUM
-    const { User, Product, Order, OrderItem, Message } = require("./models");
-    
+    const { User, Product, Order, OrderItem } = require("./models");
     await sequelize.sync({ force: true });
     console.log("✅ Base de datos reiniciada");
 
-    const adminPassword = await bcrypt.hash("admin", 10);
-    await User.create({ username: "admin", name: "Administrador", email: "admin@admin.com", password: adminPassword, role: "administrador", seller_code: null });
+    await User.create({ username: "admin", name: "Administrador", first_name: "Admin", last_name: "Principal", email: "admin@admin.com", password: await bcrypt.hash("admin", 10), role: "administrador", seller_code: null });
     console.log("👤 Admin: admin@admin.com / admin");
 
-    const vendedor1Password = await bcrypt.hash("vendedor123", 10);
-    await User.create({ username: "vendedor1", name: "Vendedor Uno", email: "vendedor1@allprosum.local", password: vendedor1Password, role: "vendedor", seller_code: "VEN-001" });
+    await User.create({ username: "vendedor1", name: "Vendedor Uno", first_name: "Juan", last_name: "Pérez", email: "vendedor1@allprosum.local", password: await bcrypt.hash("vendedor123", 10), role: "vendedor", seller_code: "VEN-001" });
     console.log("👤 Vendedor: vendedor1 / vendedor123");
 
-    const soportePassword = await bcrypt.hash("soporte123", 10);
-    await User.create({ username: "soporte", name: "Soporte Técnico", email: "soporte@allprosum.local", password: soportePassword, role: "soporte", seller_code: null });
+    await User.create({ username: "soporte", name: "Soporte Técnico", first_name: "Soporte", last_name: "Técnico", email: "soporte@allprosum.local", password: await bcrypt.hash("soporte123", 10), role: "soporte", seller_code: null });
     console.log("👤 Soporte: soporte / soporte123");
 
-    const clientePassword = await bcrypt.hash("123456", 10);
-    await User.create({ username: "cliente1", name: "Cliente de Prueba", email: "cliente@test.com", password: clientePassword, role: "client", seller_code: null });
+    await User.create({ username: "cliente1", name: "Cliente de Prueba", first_name: "Cliente", last_name: "Prueba", email: "cliente@test.com", password: await bcrypt.hash("123456", 10), role: "client", seller_code: null });
     console.log("👤 Cliente: cliente@test.com / 123456");
 
     await Product.bulkCreate([
