@@ -134,12 +134,39 @@ router.get("/:id", auth, async (req, res) => {
 router.put("/:id/status", auth, async (req, res) => {
   try {
     const { status } = req.body;
-    const order = await Order.findByPk(req.params.id);
+    const order = await Order.findByPk(req.params.id, {
+      include: [{ model: OrderItem }]
+    });
     if (!order) return res.status(404).json({ message: "Orden no encontrada" });
+
+    // Si se está aprobando y antes no estaba aprobada, descontar stock
+    if (status === 'approved' && order.status !== 'approved') {
+      for (const item of order.OrderItems) {
+        const product = await Product.findByPk(item.product_id);
+        if (product) {
+          const newStock = product.stock - item.quantity;
+          product.stock = newStock < 0 ? 0 : newStock;
+          await product.save();
+        }
+      }
+    }
+
+    // Si se está rechazando y antes estaba aprobada, devolver stock
+    if (status === 'rejected' && order.status === 'approved') {
+      for (const item of order.OrderItems) {
+        const product = await Product.findByPk(item.product_id);
+        if (product) {
+          product.stock = product.stock + item.quantity;
+          await product.save();
+        }
+      }
+    }
+
     order.status = status;
     await order.save();
     res.json({ message: "Estado actualizado", status });
   } catch (err) {
+    console.error("Error actualizando estado:", err);
     res.status(500).json({ message: "Error al actualizar estado" });
   }
 });
