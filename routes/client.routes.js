@@ -7,14 +7,43 @@ router.get("/check", async (req, res) => {
   try {
     const { id_number, id_type } = req.query;
     const fullId = `${id_type}${id_number}`;
-    // Buscamos por nombre que coincida (guardamos cédula en name como fallback)
-    const user = await User.findOne({ where: { name: fullId, role: "client" } });
+    const { Op } = require("sequelize");
+    const user = await User.findOne({ 
+      where: { 
+        role: "client",
+        [Op.or]: [
+          { name: fullId },
+          { name: id_number }
+        ]
+      },
+      attributes: ['id', 'name', 'email', 'username']
+    });
     if (user) {
-      res.json({ id: user.id, name: user.name });
+      // Buscar la última orden de este cliente para traer sus datos
+      const { Order } = require("../models");
+      const lastOrder = await Order.findOne({
+        where: { 
+          [Op.or]: [
+            { customer_id_number: fullId },
+            { customer_id_number: id_number }
+          ]
+        },
+        order: [["createdAt", "DESC"]]
+      });
+      res.json({
+        id: user.id,
+        name: user.name,
+        customer_name: lastOrder?.customer_name || user.name,
+        customer_phone: lastOrder?.customer_phone || '',
+        business_name: lastOrder?.business_name || '',
+        address: lastOrder?.address || '',
+        manager_name: lastOrder?.manager_name || ''
+      });
     } else {
       res.json(null);
     }
   } catch (err) {
+    console.error("Error verificando cliente:", err);
     res.status(500).json({ message: "Error al verificar cliente" });
   }
 });

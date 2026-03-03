@@ -102,13 +102,24 @@ router.get("/roles", auth, (req, res) => {
   res.json(["administrador", "vendedor", "soporte"]);
 });
 
-// GET permisos
-router.get("/permissions", auth, (req, res) => {
-  // Lista de permisos disponibles en el sistema
-  const availablePermissions = [
-    "dashboard", "users", "products", "orders", "settings", "chat", "reports"
-  ];
-  res.json(availablePermissions);
+// GET permisos por rol (devuelve objeto { role: permissions[] } para cada rol)
+router.get("/permissions", auth, async (req, res) => {
+  try {
+    const roles = ["administrador", "vendedor", "soporte"];
+    const availablePermissions = ["dashboard", "users", "products", "orders", "settings", "chat", "reports"];
+    
+    // Leer permisos guardados de cada rol desde Settings
+    const result = {};
+    for (const role of roles) {
+      const setting = await Setting.findOne({ where: { key: `permissions_${role}` } });
+      result[role] = setting ? JSON.parse(setting.value) : availablePermissions; // por defecto todos los permisos
+    }
+    
+    res.json({ rolePermissions: result, availablePermissions });
+  } catch (err) {
+    console.error("Error obteniendo permisos:", err);
+    res.status(500).json({ message: "Error al obtener permisos" });
+  }
 });
 
 // POST guardar permisos
