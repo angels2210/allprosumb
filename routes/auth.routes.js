@@ -17,18 +17,41 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   try {
-    // Acepta tanto "username" como "email"
     const { username, email, password } = req.body;
-    const loginField = email || username;
+    const loginField = username || email;
+    
+    if (!loginField || !password) {
+      return res.status(400).json({ success: false, message: "Usuario y contraseña requeridos" });
+    }
 
-    const user = await User.findOne({ where: { email: loginField } });
+    // Buscar por username primero, luego por email, luego por name
+    let user = await User.findOne({ where: { username: loginField } });
+    if (!user) user = await User.findOne({ where: { email: loginField } });
+    if (!user) user = await User.findOne({ where: { name: loginField } });
+
     if (!user) return res.status(400).json({ success: false, message: "Usuario no existe" });
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ success: false, message: "Contraseña incorrecta" });
 
-    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
-    res.json({ success: true, token, user });
+    const token = jwt.sign(
+      { id: user.id, role: user.role },
+      process.env.JWT_SECRET || "supersecreto123",
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        username: user.username || user.name || user.email,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        seller_code: user.seller_code
+      }
+    });
   } catch (err) {
     console.error("Error en login:", err);
     res.status(500).json({ success: false, message: "Error interno del servidor" });
